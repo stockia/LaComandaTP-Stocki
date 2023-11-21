@@ -28,7 +28,9 @@ class UsuarioController extends Usuario implements IApiUsable {
         
         $usuario = new Usuario();
         $usuario->nombre = $datos['nombre'];
-        $usuario->tipoUsuario = $datos['tipoUsuario'];
+        $usuario->rol = $datos['rol'];
+        $usuario->username = $datos['username'];
+        $usuario->password = $datos['password'];
 
         $resultado = $usuario->InsertarUsuario();
 
@@ -43,7 +45,9 @@ class UsuarioController extends Usuario implements IApiUsable {
         $usuario = new Usuario();
         $usuario->id = $id;
         $usuario->nombre = $datos['nombre'];
-        $usuario->tipoUsuario = $datos['tipoUsuario'];
+        $usuario->rol = $datos['rol'];
+        $usuario->username = $datos['username'];
+        $usuario->password = $datos['password'];
 
         $resultado = $usuario->ModificarUsuario();
 

@@ -99,11 +99,28 @@ class Mesa {
         return $consulta->execute();
     }
 
+    public function ModificarEstadoMesa() {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta(
+            "UPDATE mesas
+            SET estado=:estado
+            WHERE id=:id
+            AND idMozo=:idMozo
+            AND idPedido=:idPedido"
+        );
+        $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $consulta->bindValue(':idMozo', $this->idMozo, PDO::PARAM_INT);
+        $consulta->bindValue(':idPedido', $this->idPedido, PDO::PARAM_INT);
+        $consulta->bindValue(':estado', $this->estado, PDO::PARAM_STR);
+
+        return $consulta->execute();
+    }
+
     public function BorrarMesa() {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
         $consulta = $objetoAccesoDato->RetornarConsulta(
             "UPDATE mesas
-            SET statusMesa = 'borrado'
+            SET statusMesa = 'cerrada'
             WHERE id=:id"
         );
         $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);

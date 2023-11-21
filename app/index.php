@@ -14,6 +14,9 @@ require __DIR__ . '/../vendor/autoload.php';
 
 require_once './db/AccesoDatos.php';
 
+require_once './controllers/LoginController.php';
+require_once './utils/AutentificadorJWT.php';
+
 require_once './middlewares/LoggerMiddleware.php';
 require_once './middlewares/AuthMiddleware.php';
 
@@ -35,27 +38,36 @@ $app->addErrorMiddleware(true, true, true);
 // Add parse body
 $app->addBodyParsingMiddleware();
 
+$authMiddlewareSocio = new AuthMiddleware('socio');
+$authMiddlewareMozo = new AuthMiddleware('mozo');
+
 // Routes
-$app->put('/test', function ($request, $response, $args) {
-  $payload = json_encode(['test' => 'success']);
-  $response->getBody()->write($payload);
-  return $response->withHeader('Content-Type', 'application/json');
-});
+$app->post('/login', \LoginController::class . ':Login');
 
-
-$app->group('/usuarios', function (RouteCollectorProxy $group) {
-  $group->get('[/]', \UsuarioController::class . ':TraerTodos');
+$app->group('/usuarios', function (RouteCollectorProxy $group) use ($authMiddlewareSocio) {
+  $group->get('[/]', \UsuarioController::class . ':TraerTodos')
+    ->add($authMiddlewareSocio);
   $group->get('/{id}', \UsuarioController::class . ':TraerUno');
-  $group->post('[/]', \UsuarioController::class . ':CargarUno');
-  $group->put('/{id}', \UsuarioController::class . ':ModificarUno');
-  $group->delete('/{id}', \UsuarioController::class . ':BorrarUno');
+  $group->post('[/]', \UsuarioController::class . ':CargarUno')
+    ->add($authMiddlewareSocio);
+  $group->put('/{id}', \UsuarioController::class . ':ModificarUno')
+    ->add($authMiddlewareSocio);
+  $group->delete('/{id}', \UsuarioController::class . ':BorrarUno')
+    ->add($authMiddlewareSocio);
 });
 
-$app->group('/pedidos', function (RouteCollectorProxy $group) {
-  $group->get('[/]', \PedidoController::class . ':TraerTodos');
-  $group->get('/{id}', \PedidoController::class . ':TraerUno');
-  $group->post('[/]', \PedidoController::class . ':CargarUno');
-  $group->put('/{id}', PedidoController::class . ':ModificarUno');
+$app->group('/pedidos', function (RouteCollectorProxy $group) use ($authMiddlewareSocio, $authMiddlewareMozo) {
+  $group->get('/downloadCSV', \PedidoController::class . ':DescargarComoCSV');
+  $group->post('/uploadCSV', \PedidoController::class . ':CargarDesdeCSV');
+  $group->post('/pedidos/{idPedido}/agregar-producto', \PedidoProductoController::class . ':CargarUno')
+    ->add($authMiddlewareMozo);
+  $group->get('[/]', \PedidoController::class . ':TraerTodos')
+    ->add($authMiddlewareSocio);
+  $group->get('/{codigoUnico}', \PedidoController::class . ':TraerUno');
+  $group->post('[/]', \PedidoController::class . ':CargarUno')
+    ->add($authMiddlewareMozo);
+  $group->put('/{id}', PedidoController::class . ':ModificarUno')
+    ->add($authMiddlewareMozo);
   $group->delete('/{id}', PedidoController::class . ':BorrarUno');
 });
 
@@ -63,26 +75,22 @@ $app->group('/productos', function (RouteCollectorProxy $group) {
   $group->get('[/]', \ProductoController::class . ':TraerTodos');
   $group->get('/{id}', \ProductoController::class . ':TraerUno');
   $group->post('[/]', \ProductoController::class . ':CargarUno');
-  $group->put('/{id}', \ProductoController::class . ':ModificarUno');
-  $group->delete('/{id}', \ProductoController::class . ':BorrarUno');
+  $group->put('/{id}', \ProductoController::class . ':ModificarUno')
+    ->add($authMiddlewareSocio);
+  $group->delete('/{id}', \ProductoController::class . ':BorrarUno')
+    ->add($authMiddlewareSocio);
 });
 
-$app->group('/mesas', function (RouteCollectorProxy $group) {
+$app->group('/mesas', function (RouteCollectorProxy $group) use ($authMiddlewareSocio, $authMiddlewareMozo) {
   $group->get('[/]', \MesaController::class . ':TraerTodos');
   $group->get('/{id}', \MesaController::class . ':TraerUno');
   $group->post('[/]', \MesaController::class . ':CargarUno');
-  $group->put('/{id}', \MesaController::class . ':ModificarUno');
-  $group->delete('/{id}', \MesaController::class . ':BorrarUno');
+  $group->put('/{id}', \MesaController::class . ':ModificarUno')
+    ->add($authMiddlewareMozo);
+  $group->put('/modificar/{id}', \MesaController::class . ':ModificarUnoEstado')
+    ->add($authMiddlewareMozo);
+  $group->delete('/{id}', \MesaController::class . ':BorrarUno')
+    ->add($authMiddlewareSocio);
 });
-
-// $app->get('[/]', function (Request $request, Response $response) {    
-//     $payload = json_encode(array("mensaje" => "Slim Framework 4 PHP"));
-    
-//     // Pausa para probar el middleware (5 segundos)
-//     sleep(5);
-    
-//     $response->getBody()->write($payload);
-//     return $response->withHeader('Content-Type', 'application/json');
-// })->add(new LoggerMiddleware());
 
 $app->run();

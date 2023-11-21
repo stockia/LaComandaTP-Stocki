@@ -12,11 +12,13 @@ class PedidoController extends Pedido implements IApiUsable {
     }
 
     public function TraerUno($request, $response, $args) {
-        $id = $args['id'];
-        $pedido = Pedido::TraerUnPedido($id);
+        $codigoUnico = $args['codigoUnico'];
+        $pedido = Pedido::TraerUnPedido($codigoUnico);
         
         if (!$pedido) {
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json')->write(json_encode(['error' => 'Pedido no encontrado']));
+            $payload = json_encode(['error' => 'Pedido no encontrado']);
+            $response->getBody()->write($payload);
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
 
         $response->getBody()->write(json_encode($pedido));
@@ -34,6 +36,7 @@ class PedidoController extends Pedido implements IApiUsable {
                 $filename = $this->moveUploadedFile($directorio, $uploadedFile, $datos['idMesa'], $datos['nombreCliente']);
                 
                 $pedido = new Pedido();
+                $pedido->idMozo = $datos['idMozo'];
                 $pedido->idMesa = $datos['idMesa'];
                 $pedido->estado = $datos['estado'];
                 $pedido->nombreCliente = $datos['nombreCliente'];
@@ -74,9 +77,8 @@ class PedidoController extends Pedido implements IApiUsable {
     
         $pedido = new Pedido();
         $pedido->id = $args['id']; 
-        $pedido->idMesa = $parsedBody['idMesa'];
+        $pedido->idMozo = $parsedBody['idMozo'];
         $pedido->estado = $parsedBody['estado'];
-        $pedido->nombreCliente = $parsedBody['nombreCliente'];
         $pedido->tiempoEstimado = $parsedBody['tiempoEstimado'];
     
         $resultado = $pedido->ModificarPedido();
@@ -84,7 +86,6 @@ class PedidoController extends Pedido implements IApiUsable {
         $response->getBody()->write(json_encode($resultado));
         return $response->withHeader('Content-Type', 'application/json');
     }
-    
 
     public function BorrarUno($request, $response, $args) {
         $pedido = new pedido();
@@ -104,5 +105,63 @@ class PedidoController extends Pedido implements IApiUsable {
 
         return $pedido;
     }
+
+    public function CargarDesdeCSV($request, $response, $args) {
+        $uploadedFiles = $request->getUploadedFiles();
+        $csvFile = $uploadedFiles['archivoCSV'] ?? null;
+        
+        if ($csvFile && $csvFile->getError() === UPLOAD_ERR_OK) {
+            $rutaTemporal = __DIR__ . '/../archivosTemporales/' . $csvFile->getClientFilename();
+            $csvFile->moveTo($rutaTemporal);
+            $archivo = new SplFileObject($rutaTemporal);
+            $archivo->setFlags(SplFileObject::READ_CSV);
+            foreach ($archivo as $fila) {
+                $pedido = new Pedido();
+                $pedido->idMozo = $fila[0];
+                $pedido->idMesa = $fila[1];
+                $pedido->estado = $fila[2];
+                $pedido->nombreCliente = $fila[3];
+                $pedido->tiempoEstimado = $fila[4];
+                $pedido->foto = $fila[5];
+
+                $pedido->InsertarPedido();
+            }
+
+            $responseBody = $response->getBody();
+            $responseBody->write(json_encode(["mensaje" => "Pedidos cargados correctamente."]));
+
+            return $response->withHeader('Content-Type', 'application/json');
+        }
+    
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json')->write(json_encode(["error" => "Error al subir el archivo."]));
+    }
+    
+    public function DescargarComoCSV($request, $response, $args) {
+        $pedidos = Pedido::TraerTodosLosPedidos();
+    
+        $directory = __DIR__ . '/../archivosTemporales/';
+        $filename = 'pedidos.csv';
+        $filepath = $directory . $filename;
+    
+        if (!file_exists($directory)) {
+            mkdir($directory, 0775, true); 
+        }
+    
+        $handle = fopen($filepath, 'w');
+    
+        foreach ($pedidos as $pedido) {
+            fputcsv($handle, get_object_vars($pedido));
+        }
+        fclose($handle);
+    
+        $csvContent = file_get_contents($filepath);
+    
+        $responseBody = $response->getBody();
+        $responseBody->write($csvContent);
+    
+        return $response
+            ->withHeader('Content-Type', 'text/csv')
+            ->withHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
+    }   
 }
 ?>

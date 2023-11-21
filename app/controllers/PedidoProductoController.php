@@ -1,13 +1,14 @@
 <?php
 
+require_once __DIR__ . '/../models/PedidoProducto.php';
 require_once __DIR__ . '/../models/Pedido.php';
 require_once __DIR__ . '/../interfaces/IApiUsable.php';
 
-class PedidoProducto extends Pedido implements IApiUsable {
+class PedidoProductoController extends Pedido implements IApiUsable {
 
     public function TraerTodos($request, $response, $args) {
-        $pedidos = Pedido::TraerTodosLosPedidos();
-        $response->getBody()->write(json_encode($pedidos));
+        $pedidosProductos = PedidoProducto::TraerTodosLosPedidos();
+        $response->getBody()->write(json_encode($pedidosProductos));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
@@ -27,31 +28,16 @@ class PedidoProducto extends Pedido implements IApiUsable {
 
     public function CargarUno($request, $response, $args) {
         $datos = $request->getParsedBody();
-        $uploadedFiles = $request->getUploadedFiles();
-        $directorio = __DIR__ . '/../ImagenesPedidos';
-        
-        if (isset($uploadedFiles['foto'])) {
-            $uploadedFile = $uploadedFiles['foto'];
-            if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-                $filename = $this->moveUploadedFile($directorio, $uploadedFile, $datos['idMesa'], $datos['nombreCliente']);
-                
-                $pedido = new Pedido();
-                $pedido->idMozo = $datos['idMozo'];
-                $pedido->idMesa = $datos['idMesa'];
-                $pedido->estado = $datos['estado'];
-                $pedido->nombreCliente = $datos['nombreCliente'];
-                $pedido->tiempoEstimado = $datos['tiempoEstimado'];
-                $pedido->foto = $filename;
-                
-                $resultado = $pedido->InsertarPedido();
-                
-                $response->getBody()->write(json_encode($resultado));
-                return $response->withHeader('Content-Type', 'application/json');
-            }
-        }
 
-        $response->getBody()->write(json_encode(['error' => 'Error al cargar la foto']));
-        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        $pedido = new PedidoProducto();
+        $pedido->idMozo = $datos['idPedido'];
+        $pedido->idMesa = $datos['idProducto'];
+        $pedido->estado = $datos['estado'];
+        
+        $resultado = $pedido->InsertarPedido();
+
+        $response->getBody()->write(json_encode($resultado));
+        return $response->withHeader('Content-Type', 'application/json');
     }
 
     private function moveUploadedFile($directory, $uploadedFile, $idMesa, $nombreCliente) {

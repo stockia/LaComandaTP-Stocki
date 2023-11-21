@@ -1,6 +1,7 @@
 <?php
 class Pedido {
     public $id;
+    public $idMozo;
     public $idMesa;
     public $estado;
     public $nombreCliente;
@@ -27,8 +28,9 @@ class Pedido {
         $codigoUnico = $this->generarCodigoAlfanumerico($this->id);
         $statusPedido = 'activo';
         $consulta = $objetoAccesoDato->RetornarConsulta(
-            "INSERT INTO pedidos (idMesa, estado, nombreCliente, codigoUnico, tiempoEstimado, foto, statusPedido)
-            VALUES (:idMesa, :estado, :nombreCliente, :codigoUnico, :tiempoEstimado, :foto, :statusPedido)");
+            "INSERT INTO pedidos (idMozo, idMesa, estado, nombreCliente, codigoUnico, tiempoEstimado, foto, statusPedido)
+            VALUES (:idMozo, :idMesa, :estado, :nombreCliente, :codigoUnico, :tiempoEstimado, :foto, :statusPedido)");
+        $consulta->bindValue(':idMozo', $this->idMozo, PDO::PARAM_INT);
         $consulta->bindValue(':idMesa', $this->idMesa, PDO::PARAM_INT);
         $consulta->bindValue(':estado', $this->estado, PDO::PARAM_STR);
         $consulta->bindValue(':nombreCliente', $this->nombreCliente, PDO::PARAM_STR);
@@ -43,20 +45,23 @@ class Pedido {
 
     public function ModificarPedido() {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+    
         $consulta = $objetoAccesoDato->RetornarConsulta(
             "UPDATE pedidos 
-            SET idMesa = :idMesa, estado = :estado, nombreCliente = :nombreCliente
-            , tiempoEstimado = :tiempoEstimado
-            WHERE id = :id"
+            SET estado = :estado, tiempoEstimado = :tiempoEstimado
+            WHERE id = :id
+            AND idMozo = :idMozo"
         );
         $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);
-        $consulta->bindValue(':idMesa', $this->idMesa, PDO::PARAM_INT);
+        $consulta->bindValue(':idMozo', $this->idMozo, PDO::PARAM_INT);
         $consulta->bindValue(':estado', $this->estado, PDO::PARAM_STR);
-        $consulta->bindValue(':nombreCliente', $this->nombreCliente, PDO::PARAM_STR);
         $consulta->bindValue(':tiempoEstimado', $this->tiempoEstimado, PDO::PARAM_STR);
-        // $consulta->bindValue(':foto', $this->foto, PDO::PARAM_STR);
         
-        return $consulta->execute();
+        if ($consulta->execute()) {
+            return $consulta->rowCount();
+        } else {
+            return 'No modificado';
+        }
     }
 
     public static function TraerTodosLosPedidos() {
@@ -67,17 +72,17 @@ class Pedido {
         return $consulta->fetchAll(PDO::FETCH_CLASS, "pedido");
     }
 
-    public static function TraerUnPedido($id) {
+    public static function TraerUnPedido($codigoUnico) {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
         $consulta = $objetoAccesoDato->RetornarConsulta(
-            "SELECT * FROM pedidos 
-            WHERE id = :id"
+            "SELECT tiempoEstimado FROM pedidos 
+            WHERE codigoUnico = :codigoUnico"
         );
-        $consulta->bindValue(':id', $id, PDO::PARAM_INT);
+        $consulta->bindValue(':codigoUnico', $codigoUnico, PDO::PARAM_STR);
         $consulta->execute();
-        $pedidoBuscado = $consulta->fetchObject('pedido');
-
-        return $pedidoBuscado;
+        $pedidoBuscado = $consulta->fetch(PDO::FETCH_ASSOC);
+        
+        return $pedidoBuscado; 
     }
 
     public static function TraerPedidosPorEstado($estado) {
