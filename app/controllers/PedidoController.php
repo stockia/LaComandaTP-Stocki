@@ -21,7 +21,8 @@ class PedidoController extends Pedido implements IApiUsable {
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
 
-        $response->getBody()->write(json_encode($pedido));
+        $response->getBody()->write(json_encode(['tiempo estimado' => $pedido . ' minutos']));
+        // $response->getBody()->write(json_encode($pedido));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
@@ -40,12 +41,14 @@ class PedidoController extends Pedido implements IApiUsable {
                 $pedido->idMesa = $datos['idMesa'];
                 $pedido->estado = $datos['estado'];
                 $pedido->nombreCliente = $datos['nombreCliente'];
-                $pedido->tiempoEstimado = $datos['tiempoEstimado'];
+                // $pedido->tiempoEstimado = $datos['tiempoEstimado'];
                 $pedido->foto = $filename;
                 
                 $resultado = $pedido->InsertarPedido();
-                
-                $response->getBody()->write(json_encode($resultado));
+                $responseBody = $response->getBody();
+                // $responseBody->write(json_encode(["idMozo" => $datos['idMozo'], "idMesa" => $datos['idMesa'], "estado" => $datos['estado'], "nombreCliente" => $datos['nombreCliente'], "tiempoEstimado" => $datos['tiempoEstimado']]));
+                $responseBody->write(json_encode(["idMozo" => $datos['idMozo'], "idMesa" => $datos['idMesa'], "estado" => $datos['estado'], "nombreCliente" => $datos['nombreCliente']]));
+                // $response->getBody()->write(json_encode($resultado));
                 return $response->withHeader('Content-Type', 'application/json');
             }
         }
@@ -79,7 +82,7 @@ class PedidoController extends Pedido implements IApiUsable {
         $pedido->id = $args['id']; 
         $pedido->idMozo = $parsedBody['idMozo'];
         $pedido->estado = $parsedBody['estado'];
-        $pedido->tiempoEstimado = $parsedBody['tiempoEstimado'];
+        // $pedido->tiempoEstimado = $parsedBody['tiempoEstimado'];
     
         $resultado = $pedido->ModificarPedido();
     
@@ -121,8 +124,8 @@ class PedidoController extends Pedido implements IApiUsable {
                 $pedido->idMesa = $fila[1];
                 $pedido->estado = $fila[2];
                 $pedido->nombreCliente = $fila[3];
-                $pedido->tiempoEstimado = $fila[4];
-                $pedido->foto = $fila[5];
+                // $pedido->tiempoEstimado = $fila[4];
+                $pedido->foto = $fila[4];
 
                 $pedido->InsertarPedido();
             }
@@ -162,6 +165,23 @@ class PedidoController extends Pedido implements IApiUsable {
         return $response
             ->withHeader('Content-Type', 'text/csv')
             ->withHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
-    }   
+    }  
+    
+    public function ServirUno($request, $response, $args) {
+        $id = $args['id'];
+        $datos = $request->getParsedBody();
+
+        $pedido = new Pedido();
+        $pedido->id = $id;
+        $pedido->idMozo = $datos['idMozo'];
+        // $pedido->estado = $datos['estado'];
+        // $pedido->tiempoEstimado = $datos['tiempoEstimado'];
+
+        $resultado = $pedido->ServirPedido();
+
+        $response->getBody()->write(json_encode(["pedido estado" => 'servido', "mesa estado" => 'con clientes comiendo']));
+        // $response->getBody()->write(json_encode($resultado));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
 }
 ?>

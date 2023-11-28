@@ -1,167 +1,191 @@
 <?php
 
-require_once __DIR__ . '/../models/Pedido.php';
-require_once __DIR__ . '/../interfaces/IApiUsable.php';
+require_once __DIR__ . '/../db/AccesoDatos.php';
 
-class PedidoProducto extends Pedido implements IApiUsable {
+class PedidoProducto {
+    public $id;
+    public $idPedido;
+    public $idProducto;
+    public $tipoProducto;
+    public $tiempoEstimado;
+    public $estado;
 
-    public function TraerTodos($request, $response, $args) {
-        $pedidos = Pedido::TraerTodosLosPedidos();
-        $response->getBody()->write(json_encode($pedidos));
-        return $response->withHeader('Content-Type', 'application/json');
+    // public function InsertarPedidoProducto() {
+    //     $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+    //     $estado = 'pendiente';
+    //     $this->tiempoEstimado = rand(5, 15);
+
+    //     $consulta = $objetoAccesoDato->RetornarConsulta(
+    //         "INSERT INTO pedido_producto (idPedido, idProducto, tipoProducto, tiempoEstimado, estado)
+    //         VALUES (:idPedido, :idProducto, :tipoProducto, :tiempoEstimado, :estado)"
+    //     );
+    //     $consulta->bindValue(':idPedido', $this->idPedido, PDO::PARAM_INT);
+    //     $consulta->bindValue(':idProducto', $this->idProducto, PDO::PARAM_INT);
+    //     $consulta->bindValue(':tipoProducto', $this->tipoProducto, PDO::PARAM_STR);
+    //     $consulta->bindValue(':tiempoEstimado', $this->tiempoEstimado, PDO::PARAM_INT);
+    //     $consulta->bindValue(':estado', $estado, PDO::PARAM_STR);
+    //     $consulta->execute();
+        
+    //     return $objetoAccesoDato->RetornarUltimoIdInsertado();
+    // }
+
+    public function InsertarPedidoProducto() {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $tiempoEstimado = rand(5, 15);
+        $tipoProducto = null;
+        $estado = 'pendiente';
+    
+        $consultaTipoProducto = $objetoAccesoDato->RetornarConsulta(
+            "SELECT tipo FROM productos WHERE id = :idProducto"
+        );
+        $consultaTipoProducto->bindValue(':idProducto', $this->idProducto, PDO::PARAM_INT);
+        $consultaTipoProducto->execute();
+        $resultado = $consultaTipoProducto->fetch(PDO::FETCH_ASSOC);
+    
+        if ($resultado) {
+            $tipoProducto = $resultado['tipo'];
+        } else {
+            return false;
+        }
+    
+        $consulta = $objetoAccesoDato->RetornarConsulta(
+            "INSERT INTO pedido_producto (idPedido, idProducto, tipoProducto, tiempoEstimado, estado)
+            VALUES (:idPedido, :idProducto, :tipoProducto, :tiempoEstimado, :estado)"
+        );
+        $consulta->bindValue(':idPedido', $this->idPedido, PDO::PARAM_INT);
+        $consulta->bindValue(':idProducto', $this->idProducto, PDO::PARAM_INT);
+        $consulta->bindValue(':tipoProducto', $tipoProducto, PDO::PARAM_STR);
+        $consulta->bindValue(':tiempoEstimado', $tiempoEstimado, PDO::PARAM_INT);
+        $consulta->bindValue(':estado', $estado, PDO::PARAM_STR);
+        $consulta->execute();
+        
+        return true;
+    }
+    
+
+    public static function TraerTodosLosPedidoProducto() {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta("SELECT * FROM pedido_producto");
+        $consulta->execute();
+
+        return $consulta->fetchAll(PDO::FETCH_CLASS, 'PedidoProducto');
     }
 
-    public function TraerUno($request, $response, $args) {
-        $codigoUnico = $args['codigoUnico'];
-        $pedido = Pedido::TraerUnPedido($codigoUnico);
-        
-        if (!$pedido) {
-            $payload = json_encode(['error' => 'Pedido no encontrado']);
-            $response->getBody()->write($payload);
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+    public static function TraerUnPedidoProducto($idPedido) {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta("SELECT * FROM pedido_producto WHERE idPedido=:idPedido");
+        $consulta->bindValue(':idPedido', $idPedido, PDO::PARAM_INT);
+        $consulta->execute();
+        $productoBuscado = $consulta->fetchObject('PedidoProducto');
+
+        return $productoBuscado;
+    }
+
+    public static function TraerUnPedidoProductoPorEstado($estado) {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta('SELECT * FROM pedido_producto WHERE estado=:estado');
+        $consulta->bindValue(':estado', $estado, PDO::PARAM_STR);
+        $consulta->execute();
+        $productosBuscado = $consulta->fetchObject('PedidoProducto');
+
+        return $productosBuscado;
+    }
+
+    public static function TraerPedidoProductoPorTipo($tipoProducto) {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta('SELECT * FROM pedido_producto WHERE tipoProducto=:tipoProducto');
+        $consulta->bindValue(':tipoProducto', $tipoProducto, PDO::PARAM_STR);
+        $consulta->execute();
+
+        return $consulta->fetchAll(PDO::FETCH_CLASS, 'PedidoProducto');
+    }
+
+    public function ModificarPedidoProducto() {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta(
+            "UPDATE pedido_producto
+            SET estado = :estado
+            WHERE idPedido = :idPedido
+            AND idProducto = :idProducto"
+        );
+        $consulta->bindValue(':idPedido', $this->idPedido, PDO::PARAM_INT);
+        $consulta->bindValue(':idProducto', $this->idProducto, PDO::PARAM_INT);
+        $consulta->bindValue(':estado', $this->estado, PDO::PARAM_STR);
+
+        return $consulta->execute();
+    }
+
+    public function BorrarPedidoProducto() {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta(
+            "UPDATE pedido_producto
+            SET estado = 'borrado'
+            WHERE id=:id"
+        );
+        $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $consulta->execute();
+
+        return $consulta->rowCount();
+    }
+
+    public static function TraerComidaPendiente($tipoProducto, $estado) {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta(
+            "SELECT * 
+            FROM pedido_producto
+            WHERE tipoProducto=:tipoProducto
+            AND estado=:estado"
+        );
+
+        $consulta->bindValue(':tipoProducto', $tipoProducto, PDO::PARAM_STR);
+        $consulta->bindValue(':estado', $estado, PDO::PARAM_STR);
+        $consulta->execute();
+
+        return $consulta->fetchAll(PDO::FETCH_CLASS, 'PedidoProducto');
+    }
+
+    public static function ValidarProductosPedido($idPedido) {
+        $todosListos = true;
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta(
+            "SELECT estado 
+            FROM pedido_producto 
+            WHERE idPedido = :idPedido"
+        );
+        $consulta->bindValue(':idPedido', $idPedido, PDO::PARAM_INT);
+        $consulta->execute();
+        $resultados = $consulta->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($resultados) === 0) {
+            return null;
         }
 
-        $response->getBody()->write(json_encode($pedido));
-        return $response->withHeader('Content-Type', 'application/json');
-    }
-
-    public function CargarUno($request, $response, $args) {
-        $datos = $request->getParsedBody();
-        $uploadedFiles = $request->getUploadedFiles();
-        $directorio = __DIR__ . '/../ImagenesPedidos';
-        
-        if (isset($uploadedFiles['foto'])) {
-            $uploadedFile = $uploadedFiles['foto'];
-            if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-                $filename = $this->moveUploadedFile($directorio, $uploadedFile, $datos['idMesa'], $datos['nombreCliente']);
-                
-                $pedido = new Pedido();
-                $pedido->idMozo = $datos['idMozo'];
-                $pedido->idMesa = $datos['idMesa'];
-                $pedido->estado = $datos['estado'];
-                $pedido->nombreCliente = $datos['nombreCliente'];
-                $pedido->tiempoEstimado = $datos['tiempoEstimado'];
-                $pedido->foto = $filename;
-                
-                $resultado = $pedido->InsertarPedido();
-                
-                $response->getBody()->write(json_encode($resultado));
-                return $response->withHeader('Content-Type', 'application/json');
+        foreach ($resultados as $fila) {
+            if ($fila['estado'] !== 'listo') {
+                $todosListos = false;
+                break;
             }
         }
 
-        $response->getBody()->write(json_encode(['error' => 'Error al cargar la foto']));
-        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
-    }
+        if ($todosListos) {
+            $consultaUpdate = $objetoAccesoDato->RetornarConsulta(
+                "UPDATE pedidos 
+                SET estado = 'listo para servir' 
+                WHERE id = :idPedido"
+            );
+            $consultaUpdate->bindValue(':idPedido', $idPedido, PDO::PARAM_INT);
+            $consultaUpdate->execute();
 
-    private function moveUploadedFile($directory, $uploadedFile, $idMesa, $nombreCliente) {
-        if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-            $filename = $this->generateFilename($uploadedFile->getClientFilename(), $idMesa, $nombreCliente);
-            $uploadedFile->moveTo($directory . DIRECTORY_SEPARATOR . $filename);
-
-            return $filename;
+            // $consultaUpdateMesa = $objetoAccesoDato->RetornarConsulta(
+            //     "UPDATE mesas 
+            //     SET estado = 'con clientes comiendo' 
+            //     WHERE idPedido = :idPedido"
+            // );
+            // $consultaUpdateMesa->bindValue(':idPedido', $idPedido, PDO::PARAM_INT);
+            // $consultaUpdateMesa->execute();
         }
 
-        throw new Exception('Failed to move uploaded file');
+        return $todosListos;
     }
-
-    private function generateFilename($originalFilename, $idMesa, $nombreCliente) {
-        $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
-        $newBasename = $idMesa . '_' . $nombreCliente;
-
-        return sprintf('%s.%s', $newBasename, $extension);
-    }
-
-    public function ModificarUno($request, $response, $args) {
-        $parsedBody = $request->getParsedBody(); 
-    
-        $pedido = new Pedido();
-        $pedido->id = $args['id']; 
-        $pedido->idMozo = $parsedBody['idMozo'];
-        $pedido->estado = $parsedBody['estado'];
-        $pedido->tiempoEstimado = $parsedBody['tiempoEstimado'];
-    
-        $resultado = $pedido->ModificarPedido();
-    
-        $response->getBody()->write(json_encode($resultado));
-        return $response->withHeader('Content-Type', 'application/json');
-    }
-
-    public function BorrarUno($request, $response, $args) {
-        $pedido = new pedido();
-        $pedido->id = $args['id'];
-
-        $resultado = $pedido->BorrarPedido();
-
-        $response->getBody()->write(json_encode(['resultado' => $resultado]));
-        return $response->withHeader('Content-Type', 'application/json');
-    }
-
-    public function buscarPedidosPorEstado($estado) {
-        $pedido = pedido::TraerPedidosPorEstado($estado);
-        if ($pedido === false) {
-            return ['error' => 'No existe el pedido'];
-        } 
-
-        return $pedido;
-    }
-
-    public function CargarDesdeCSV($request, $response, $args) {
-        $uploadedFiles = $request->getUploadedFiles();
-        $csvFile = $uploadedFiles['archivoCSV'] ?? null;
-        
-        if ($csvFile && $csvFile->getError() === UPLOAD_ERR_OK) {
-            $rutaTemporal = __DIR__ . '/../archivosTemporales/' . $csvFile->getClientFilename();
-            $csvFile->moveTo($rutaTemporal);
-            $archivo = new SplFileObject($rutaTemporal);
-            $archivo->setFlags(SplFileObject::READ_CSV);
-            foreach ($archivo as $fila) {
-                $pedido = new Pedido();
-                $pedido->idMozo = $fila[0];
-                $pedido->idMesa = $fila[1];
-                $pedido->estado = $fila[2];
-                $pedido->nombreCliente = $fila[3];
-                $pedido->tiempoEstimado = $fila[4];
-                $pedido->foto = $fila[5];
-
-                $pedido->InsertarPedido();
-            }
-
-            $responseBody = $response->getBody();
-            $responseBody->write(json_encode(["mensaje" => "Pedidos cargados correctamente."]));
-
-            return $response->withHeader('Content-Type', 'application/json');
-        }
-    
-        return $response->withStatus(400)->withHeader('Content-Type', 'application/json')->write(json_encode(["error" => "Error al subir el archivo."]));
-    }
-    
-    public function DescargarComoCSV($request, $response, $args) {
-        $pedidos = Pedido::TraerTodosLosPedidos();
-    
-        $directory = __DIR__ . '/../archivosTemporales/';
-        $filename = 'pedidos.csv';
-        $filepath = $directory . $filename;
-    
-        if (!file_exists($directory)) {
-            mkdir($directory, 0775, true); 
-        }
-    
-        $handle = fopen($filepath, 'w');
-    
-        foreach ($pedidos as $pedido) {
-            fputcsv($handle, get_object_vars($pedido));
-        }
-        fclose($handle);
-    
-        $csvContent = file_get_contents($filepath);
-    
-        $responseBody = $response->getBody();
-        $responseBody->write($csvContent);
-    
-        return $response
-            ->withHeader('Content-Type', 'text/csv')
-            ->withHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
-    }   
 }
-?>
+    

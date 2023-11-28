@@ -120,7 +120,7 @@ class Mesa {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
         $consulta = $objetoAccesoDato->RetornarConsulta(
             "UPDATE mesas
-            SET statusMesa = 'cerrada'
+            SET statusMesa = 'cerrada', estado = 'con cliente pagando'
             WHERE id=:id"
         );
         $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);

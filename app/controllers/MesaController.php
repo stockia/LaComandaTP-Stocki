@@ -33,7 +33,7 @@ class MesaController extends Mesa implements IApiUsable {
                 
         $resultado = $mesa->InsertarMesa();
                 
-        $response->getBody()->write(json_encode($resultado));
+        $response->getBody()->write(json_encode(['id' => $response,'idMozo' => $mesa->idMozo, 'idPedido' => $mesa->idPedido, 'estado' => $mesa->estado]));
         return $response->withHeader('Content-Type', 'application/json');
     }
 

@@ -7,14 +7,14 @@ require_once __DIR__ . '/../interfaces/IApiUsable.php';
 class PedidoProductoController extends Pedido implements IApiUsable {
 
     public function TraerTodos($request, $response, $args) {
-        $pedidosProductos = PedidoProducto::TraerTodosLosPedidos();
+        $pedidosProductos = PedidoProducto::TraerTodosLosPedidoProducto();
         $response->getBody()->write(json_encode($pedidosProductos));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
     public function TraerUno($request, $response, $args) {
-        $codigoUnico = $args['codigoUnico'];
-        $pedido = Pedido::TraerUnPedido($codigoUnico);
+        $idPedido = $args['idPedido'];
+        $pedido = Pedido::TraerUnPedidoProducto($idPedido);
         
         if (!$pedido) {
             $payload = json_encode(['error' => 'Pedido no encontrado']);
@@ -28,126 +28,133 @@ class PedidoProductoController extends Pedido implements IApiUsable {
 
     public function CargarUno($request, $response, $args) {
         $datos = $request->getParsedBody();
-
-        $pedido = new PedidoProducto();
-        $pedido->idMozo = $datos['idPedido'];
-        $pedido->idMesa = $datos['idProducto'];
-        $pedido->estado = $datos['estado'];
         
-        $resultado = $pedido->InsertarPedido();
+        $pedido = new PedidoProducto();
+        $pedido->idPedido = $args['idPedido'];
+        $pedido->idProducto = $datos['idProducto'];
+        // $pedido->tipoProducto = $datos['tipoProducto'];
+        // $pedido->estado = $datos['estado'];
+        
+        $resultado = $pedido->InsertarPedidoProducto();
 
-        $response->getBody()->write(json_encode($resultado));
-        return $response->withHeader('Content-Type', 'application/json');
-    }
-
-    private function moveUploadedFile($directory, $uploadedFile, $idMesa, $nombreCliente) {
-        if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-            $filename = $this->generateFilename($uploadedFile->getClientFilename(), $idMesa, $nombreCliente);
-            $uploadedFile->moveTo($directory . DIRECTORY_SEPARATOR . $filename);
-
-            return $filename;
+        if ($resultado === true) {
+            $response->getBody()->write(json_encode(['respuesta' => 'Producto cargado']));
         }
-
-        throw new Exception('Failed to move uploaded file');
-    }
-
-    private function generateFilename($originalFilename, $idMesa, $nombreCliente) {
-        $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
-        $newBasename = $idMesa . '_' . $nombreCliente;
-
-        return sprintf('%s.%s', $newBasename, $extension);
+        else {
+            $response->getBody()->write(json_encode(['error' => 'Error al cargar el producto']));
+        }
+        return $response->withHeader('Content-Type', 'application/json');
     }
 
     public function ModificarUno($request, $response, $args) {
         $parsedBody = $request->getParsedBody(); 
     
-        $pedido = new Pedido();
-        $pedido->id = $args['id']; 
-        $pedido->idMozo = $parsedBody['idMozo'];
+        $pedido = new PedidoProducto();
+        $pedido->id = $args['idPedido']; 
+        $pedido->idMozo = $parsedBody['idProducto'];
         $pedido->estado = $parsedBody['estado'];
-        $pedido->tiempoEstimado = $parsedBody['tiempoEstimado'];
     
-        $resultado = $pedido->ModificarPedido();
+        $resultado = $pedido->ModificarPedidoProducto();
     
         $response->getBody()->write(json_encode($resultado));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
     public function BorrarUno($request, $response, $args) {
-        $pedido = new pedido();
+        $pedido = new PedidoProducto();
         $pedido->id = $args['id'];
 
-        $resultado = $pedido->BorrarPedido();
+        $resultado = $pedido->BorrarPedidoProducto();
 
         $response->getBody()->write(json_encode(['resultado' => $resultado]));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
-    public function buscarPedidosPorEstado($estado) {
-        $pedido = pedido::TraerPedidosPorEstado($estado);
-        if ($pedido === false) {
-            return ['error' => 'No existe el pedido'];
-        } 
+    // public function buscarPedidosPorEstado($estado) {
+    //     $pedido = PedidoProducto::TraerUnPedidoProductoPorEstado($estado);
+    //     if ($pedido === false) {
+    //         return ['error' => 'No existen pedidos con ese estado'];
+    //     } 
 
-        return $pedido;
+    //     return $pedido;
+    // }
+    
+    public function TraerComidaPendiente($request, $response, $args) {
+        $pedidos = PedidoProducto::TraerComidaPendiente('comida','pendiente');
+        $response->getBody()->write(json_encode($pedidos));
+        return $response->withHeader('Content-Type', 'application/json');
     }
 
-    public function CargarDesdeCSV($request, $response, $args) {
-        $uploadedFiles = $request->getUploadedFiles();
-        $csvFile = $uploadedFiles['archivoCSV'] ?? null;
+    public function TraerBebidaPendiente($request, $response, $args) {
+        $pedidos = PedidoProducto::TraerComidaPendiente('bebida','pendiente');
+        $response->getBody()->write(json_encode($pedidos));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function TraerCervezaPendiente($request, $response, $args) {
+        $pedidos = PedidoProducto::TraerComidaPendiente('cerveza','pendiente');
+        $response->getBody()->write(json_encode($pedidos));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function ModificarComida($request, $response, $args) {
+        $parsedBody = $request->getParsedBody(); 
+    
+        $pedido = new PedidoProducto();
+        $pedido->idPedido = $args['idPedido']; 
+        $pedido->idProducto = $parsedBody['idProducto'];
+        $pedido->estado = $parsedBody['estado'];
+    
+        $resultado = $pedido->ModificarPedidoProducto();
+    
+        $response->getBody()->write(json_encode($resultado));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function ModificarBebida($request, $response, $args) {
+        $parsedBody = $request->getParsedBody(); 
+    
+        $pedido = new PedidoProducto();
+        $pedido->idPedido = $args['idPedido']; 
+        $pedido->idProducto = $parsedBody['idProducto'];
+        $pedido->estado = $parsedBody['estado'];
+    
+        $resultado = $pedido->ModificarPedidoProducto();
+    
+        $response->getBody()->write(json_encode($resultado));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function ModificarCerveza($request, $response, $args) {
+        $parsedBody = $request->getParsedBody(); 
+    
+        $pedido = new PedidoProducto();
+        $pedido->idPedido = $args['idPedido']; 
+        $pedido->idProducto = $parsedBody['idProducto'];
+        $pedido->estado = $parsedBody['estado'];
+    
+        $resultado = $pedido->ModificarPedidoProducto();
+    
+        $response->getBody()->write(json_encode($resultado));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function VerificarPedido($request, $response, $args) {
+        $idPedido = $args['idPedido'];
+        $pedido = PedidoProducto::ValidarProductosPedido($idPedido);
         
-        if ($csvFile && $csvFile->getError() === UPLOAD_ERR_OK) {
-            $rutaTemporal = __DIR__ . '/../archivosTemporales/' . $csvFile->getClientFilename();
-            $csvFile->moveTo($rutaTemporal);
-            $archivo = new SplFileObject($rutaTemporal);
-            $archivo->setFlags(SplFileObject::READ_CSV);
-            foreach ($archivo as $fila) {
-                $pedido = new Pedido();
-                $pedido->idMozo = $fila[0];
-                $pedido->idMesa = $fila[1];
-                $pedido->estado = $fila[2];
-                $pedido->nombreCliente = $fila[3];
-                $pedido->tiempoEstimado = $fila[4];
-                $pedido->foto = $fila[5];
-
-                $pedido->InsertarPedido();
-            }
-
-            $responseBody = $response->getBody();
-            $responseBody->write(json_encode(["mensaje" => "Pedidos cargados correctamente."]));
-
-            return $response->withHeader('Content-Type', 'application/json');
+        if ($pedido === false) {
+            $payload = json_encode(['error' => 'Pedido aun en preparacion']);
+            $response->getBody()->write($payload);
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        } else if ($pedido === null) {
+            $payload = json_encode(['error' => 'Pedido no encontrado']);
+            $response->getBody()->write($payload);
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
-    
-        return $response->withStatus(400)->withHeader('Content-Type', 'application/json')->write(json_encode(["error" => "Error al subir el archivo."]));
+
+        $response->getBody()->write(json_encode(['status' => 'Pedido listo para servir']));
+        return $response->withHeader('Content-Type', 'application/json');
     }
-    
-    public function DescargarComoCSV($request, $response, $args) {
-        $pedidos = Pedido::TraerTodosLosPedidos();
-    
-        $directory = __DIR__ . '/../archivosTemporales/';
-        $filename = 'pedidos.csv';
-        $filepath = $directory . $filename;
-    
-        if (!file_exists($directory)) {
-            mkdir($directory, 0775, true); 
-        }
-    
-        $handle = fopen($filepath, 'w');
-    
-        foreach ($pedidos as $pedido) {
-            fputcsv($handle, get_object_vars($pedido));
-        }
-        fclose($handle);
-    
-        $csvContent = file_get_contents($filepath);
-    
-        $responseBody = $response->getBody();
-        $responseBody->write($csvContent);
-    
-        return $response
-            ->withHeader('Content-Type', 'text/csv')
-            ->withHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
-    }   
 }
 ?>
